@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0d12">
+  <title>Mafia Night</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b0d12;--panel:#141923;--panel2:#1b2230;--line:#293244;--text:#f4f6fb;--muted:#9aa6ba;--accent:#8b7cff;--accent2:#6f5df5;--green:#49d6a0;--red:#ff6b7a}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#252044 0,transparent 45%),var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+    .wrap{width:min(100% - 32px,520px);margin:0 auto;padding:26px 0 48px}.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0 30px;font-weight:800;letter-spacing:.12em;font-size:13px;color:#c9c3ff}.brand-mark{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#9c8cff,#5b4ad8);display:grid;place-items:center;color:white;font-size:17px}
+    h1{font-size:clamp(30px,8vw,42px);line-height:1.05;letter-spacing:-.04em;margin:0 0 10px;text-align:center} .sub{text-align:center;color:var(--muted);margin:0 0 26px}
+    .panel{background:linear-gradient(180deg,rgba(25,32,46,.97),rgba(18,23,33,.97));border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 18px 55px #0005}
+    .stack{display:grid;gap:14px}.field label{display:block;color:#c5ccda;font-size:13px;font-weight:650;margin:0 0 7px}.field input{width:100%;background:#0e131c;border:1px solid #30394b;border-radius:12px;padding:14px 15px;color:var(--text);font:inherit;outline:none}.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #8b7cff22}
+    button{font:inherit;font-weight:750;border:0;border-radius:12px;padding:14px 16px;cursor:pointer;transition:transform .12s,opacity .12s}button:active{transform:scale(.985)}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:linear-gradient(135deg,#9b8cff,#6d5af1);color:white}.secondary{background:#252d3c;color:#e8ebf3;border:1px solid #354055}.ghost{background:transparent;border:1px solid #3a4559;color:#cbd3e1}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}.divider{display:flex;align-items:center;gap:12px;color:#77839a;font-size:12px;margin:2px 0}.divider:before,.divider:after{content:"";height:1px;background:var(--line);flex:1}
+    .hidden{display:none!important}.error{color:#ff9aa5;background:#3a1e29;border:1px solid #63303e;padding:11px 13px;border-radius:11px;font-size:13px}.hint{font-size:12px;color:var(--muted);text-align:center;margin:14px 0 0}
+    .topline{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px}.eyebrow{font-size:11px;letter-spacing:.13em;color:#a99fff;font-weight:800}.room-code{font-size:20px;letter-spacing:.18em;font-weight:850}.status{border:1px solid #315e51;background:#15352d;color:var(--green);padding:5px 9px;border-radius:99px;font-size:11px;font-weight:800}
+    .section-title{font-size:17px;font-weight:800;margin:0}.count{color:var(--muted);font-size:13px}.players{display:grid;gap:9px;margin:16px 0}.player{display:flex;align-items:center;gap:11px;background:#101620;border:1px solid #252f40;border-radius:13px;padding:12px}.avatar{width:34px;height:34px;display:grid;place-items:center;background:#2b2948;color:#c8c0ff;border-radius:11px;font-weight:800}.pname{font-weight:650;flex:1;min-width:0;overflow-wrap:anywhere}.tag{font-size:10px;color:#c2baff;background:#302b54;border-radius:99px;padding:4px 7px}.online{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px}.offline{background:#778195}
+    .notice{border:1px dashed #3a4559;border-radius:13px;padding:15px;text-align:center;color:var(--muted);font-size:13px;margin:16px 0}.role-card{margin:18px 0 14px;padding:25px 18px;border-radius:18px;background:linear-gradient(145deg,#29244e,#171d2b);border:1px solid #51468d;text-align:center}.role-label{font-size:11px;letter-spacing:.15em;color:#bdb4ff;font-weight:850}.role-name{font-size:clamp(27px,7vw,36px);font-weight:900;margin:10px 0 2px;letter-spacing:-.03em}.role-desc{color:#b9c0d0;font-size:13px}.small{font-size:12px;color:var(--muted)}.actions{display:grid;gap:10px;margin-top:16px}.footer{text-align:center;color:#667187;font-size:11px;margin:22px 0 0}
+    @media(max-width:380px){.panel{padding:17px}.split{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="brand-mark">♟</span> MAFIA NIGHT</div>
+  <section id="home">
+    <h1>Who can you<br>trust tonight?</h1>
+    <p class="sub">A little mystery. A lot of suspicion.</p>
+    <div class="panel stack">
+      <div class="field"><label for="createName">YOUR NAME</label><input id="createName" maxlength="24" placeholder="Enter your name" autocomplete="name"></div>
+      <button class="primary" id="createBtn">Create a game</button>
+      <div class="divider">OR JOIN A GAME</div>
+      <div class="field"><label for="joinCode">ROOM CODE</label><input id="joinCode" maxlength="8" placeholder="e.g. A7K2PQ" autocapitalize="characters"></div>
+      <div class="field"><label for="joinName">YOUR NAME</label><input id="joinName" maxlength="24" placeholder="Enter your name" autocomplete="name"></div>
+      <button class="secondary" id="joinBtn">Join lobby</button>
+      <div id="homeError" class="error hidden"></div>
+    </div>
+    <p class="hint">No account needed. Just join, get your role, and play.</p>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="panel">
+      <div class="topline">
+        <div><div class="eyebrow">YOUR ROOM</div><div class="room-code" id="roomCode">------</div></div>
+        <span class="status" id="gameStatus">LOBBY</span>
+      </div>
+      <div id="lobbyView">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <h2 class="section-title">Players in the lobby</h2><span class="count" id="playerCount">0 players</span>
+        </div>
+        <div class="players" id="players"></div>
+        <div class="notice" id="lobbyNotice">Waiting for players to join…</div>
+        <div id="organizerActions" class="actions hidden">
+          <button class="primary" id="startBtn">Start game</button>
+          <div class="small" style="text-align:center">All players, including you, receive a random role.</div>
+        </div>
+        <div id="guestNotice" class="notice hidden">Waiting for the organizer to start the game…</div>
+      </div>
+      <div id="roleView" class="hidden">
+        <div class="notice">Your role is private. Make sure nobody is looking at your screen.</div>
+        <div class="role-card">
+          <div class="role-label">YOUR SECRET ROLE</div>
+          <div class="role-name" id="roleName">••••••••</div>
+          <div class="role-desc" id="roleDesc">Tap reveal when you are ready.</div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="revealBtn">Reveal my role</button>
+          <button class="secondary hidden" id="hideBtn">Hide my role</button>
+        </div>
+        <div id="resetActions" class="actions hidden" style="margin-top:22px">
+          <div class="small" style="text-align:center">When the round is over, the organizer can return everyone to the lobby.</div>
+          <button class="secondary" id="resetBtn">Reset round</button>
+        </div>
+        <div id="waitReset" class="notice hidden">The game is in progress. Waiting for the organizer to reset the round.</div>
+      </div>
+      <div id="gameError" class="error hidden" style="margin-top:14px"></div>
+    </div>
+    <div class="footer">Keep your role secret. Trust nobody.</div>
+  </section>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let session = null, socket = null, latestState = null, roleVisible = false, reconnectTimer = null;
+  const roleDescriptions = {
+    "Game Master": "Guide the game and manage the discussion.",
+    "Mafia": "Your identity is secret. Blend in with the civilians.",
+    "Protector": "Your role is to protect someone during the game.",
+    "Detective": "Your role is to investigate and find the Mafia."
+  };
+  const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
+  function errorAt(id, message) { $(id).textContent = message; show(id, true); }
+  function clearErrors(){ show("homeError",false); show("gameError",false); }
+  async function api(url, body) {
+    const response = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.detail || "Something went wrong. Please try again.");
+    return data;
+  }
+  function enter(data) {
+    session = {code:data.code, playerId:data.player_id, name:data.name, isOrganizer:data.is_organizer};
+    localStorage.setItem("mafiaNightSession",JSON.stringify(session));
+    show("home",false); show("game",true); $("roomCode").textContent=data.code;
+    render(data.state);
+    connect();
+  }
+  function connect() {
+    if(!session) return;
+    if(socket){ try{socket.close()}catch(e){} }
+    const scheme = location.protocol === "https:" ? "wss" : "ws";
+    socket = new WebSocket(`${scheme}://${location.host}/ws/${session.code}/${session.playerId}`);
+    socket.onmessage = event => {
+      try { const msg=JSON.parse(event.data); if(msg.type==="state") render(msg.data); } catch(e){}
+    };
+    socket.onclose = () => {
+      if(session) reconnectTimer=setTimeout(connect,1800);
+    };
+    socket.onerror = () => { try{socket.close()}catch(e){} };
+    socket.onopen = () => {
+      const ping = setInterval(()=>{ if(!socket || socket.readyState!==1){clearInterval(ping);return;} socket.send("ping"); },20000);
+    };
+  }
+  function render(state) {
+    latestState=state;
+    const players=state.players || [];
+    $("playerCount").textContent=`${players.length} player${players.length===1?"":"s"}`;
+    $("players").innerHTML="";
+    players.forEach((p,i)=>{
+      const item=document.createElement("div"); item.className="player";
+      const avatar=document.createElement("div"); avatar.className="avatar"; avatar.textContent=(p.name||"?").charAt(0).toUpperCase();
+      const name=document.createElement("div"); name.className="pname"; name.textContent=p.name;
+      const status=document.createElement("span"); status.className="small"; status.innerHTML=`<span class="online ${p.connected?"":"offline"}"></span>${p.connected?"Online":"Offline"}`;
+      item.append(avatar,name);
+      if(p.is_organizer){const tag=document.createElement("span");tag.className="tag";tag.textContent="ORGANIZER";item.append(tag);}
+      item.append(status); $("players").append(item);
+    });
+    const started=state.status==="started";
+    $("gameStatus").textContent=started?"IN PROGRESS":"LOBBY";
+    show("lobbyView",!started); show("roleView",started);
+    if(!started){
+      show("organizerActions",session.isOrganizer);
+      show("guestNotice",!session.isOrganizer);
+      $("lobbyNotice").textContent=players.length<4?`Need ${4-players.length} more player${4-players.length===1?"":"s"} to start.`:"Everyone is here. The organizer can start the game.";
+      $("startBtn").disabled=players.length<4;
+    } else {
+      const role=state.you && state.you.role;
+      $("roleName").textContent=roleVisible?(role||"Role unavailable"):"••••••••";
+      $("roleDesc").textContent=roleVisible?(roleDescriptions[role]||"You are a civilian. Stay alert."):"Tap reveal when you are ready.";
+      show("revealBtn",!roleVisible); show("hideBtn",roleVisible);
+      show("resetActions",session.isOrganizer); show("waitReset",!session.isOrganizer);
+    }
+    clearErrors();
+  }
+  $("createBtn").onclick=async()=>{
+    clearErrors();
+    try{const data=await api("/api/rooms",{name:$("createName").value});enter(data);}
+    catch(e){errorAt("homeError",e.message);}
+  };
+  $("joinBtn").onclick=async()=>{
+    clearErrors();
+    try{const data=await api(`/api/rooms/${encodeURIComponent($("joinCode").value.trim().toUpperCase())}/join`,{code:$("joinCode").value.trim().toUpperCase(),name:$("joinName").value});enter(data);}
+    catch(e){errorAt("homeError",e.message);}
+  };
+  $("startBtn").onclick=async()=>{
+    $("startBtn").disabled=true;
+    try{await api(`/api/rooms/${session.code}/start`,{player_id:session.playerId});}
+    catch(e){errorAt("gameError",e.message);$("startBtn").disabled=false;}
+  };
+  $("resetBtn").onclick=async()=>{
+    $("resetBtn").disabled=true;
+    try{roleVisible=false;await api(`/api/rooms/${session.code}/reset`,{player_id:session.playerId});}
+    catch(e){errorAt("gameError",e.message);}
+    finally{$("resetBtn").disabled=false;}
+  };
+  $("revealBtn").onclick=()=>{roleVisible=true;if(latestState)render(latestState);};
+  $("hideBtn").onclick=()=>{roleVisible=false;if(latestState)render(latestState);};
+  $("joinCode").addEventListener("input",e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""));
+  window.addEventListener("beforeunload",()=>{if(socket)socket.close();if(reconnectTimer)clearTimeout(reconnectTimer);});
+  // Rejoin an existing session after a refresh; the player token is stored only in this browser.
+  try{
+    const saved=JSON.parse(localStorage.getItem("mafiaNightSession")||"null");
+    if(saved && saved.code && saved.playerId){
+      session=saved;
+      show("home",false);show("game",true);$("roomCode").textContent=saved.code;
+      connect();
+    }
+  }catch(e){localStorage.removeItem("mafiaNightSession");}
+})();
+</script>
+</body>
+</html>

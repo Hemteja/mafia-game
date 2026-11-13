@@ -68,11 +68,11 @@
           <button class="primary" id="revealBtn">Reveal my role</button>
           <button class="secondary hidden" id="hideBtn">Hide my role</button>
         </div>
-        <div id="resetActions" class="actions hidden" style="margin-top:22px">
-          <div class="small" style="text-align:center">When the round is over, the organizer can return everyone to the lobby.</div>
-          <button class="secondary" id="resetBtn">Reset round</button>
-        </div>
-        <div id="waitReset" class="notice hidden">The game is in progress. Waiting for the organizer to reset the round.</div>
+      </div>
+      <div id="roomActions" class="actions" style="margin-top:22px">
+        <button class="ghost hidden" id="hardResetBtn">Hard Reset · Close Room</button>
+        <button class="secondary" id="leaveBtn">Leave Game</button>
+        <div class="small" id="organizerTransferHint" style="text-align:center">If the organizer leaves or disconnects, another player automatically becomes organizer.</div>
       </div>
       <div id="gameError" class="error hidden" style="margin-top:14px"></div>
     </div>
@@ -92,6 +92,14 @@
   const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
   function errorAt(id, message) { $(id).textContent = message; show(id, true); }
   function clearErrors(){ show("homeError",false); show("gameError",false); }
+  function returnHome(message){
+    session=null; latestState=null; roleVisible=false;
+    if(reconnectTimer) clearTimeout(reconnectTimer);
+    if(socket){ const old=socket; socket=null; try{old.close()}catch(e){} }
+    localStorage.removeItem("mafiaNightSession");
+    show("game",false); show("home",true);
+    if(message) errorAt("homeError",message);
+  }
   async function api(url, body) {
     const response = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     const data = await response.json().catch(()=>({}));
@@ -111,10 +119,16 @@
     const scheme = location.protocol === "https:" ? "wss" : "ws";
     socket = new WebSocket(`${scheme}://${location.host}/ws/${session.code}/${session.playerId}`);
     socket.onmessage = event => {
-      try { const msg=JSON.parse(event.data); if(msg.type==="state") render(msg.data); } catch(e){}
+      try {
+        const msg=JSON.parse(event.data);
+        if(msg.type==="state") render(msg.data);
+        if(msg.type==="room_closed") returnHome(msg.message || "This room has been closed.");
+      } catch(e){}
     };
-    socket.onclose = () => {
-      if(session) reconnectTimer=setTimeout(connect,1800);
+    socket.onclose = event => {
+      if(!session) return;
+      if(event.code===1008 || event.code===4001){ returnHome("This room is no longer available. Create or join another game."); return; }
+      reconnectTimer=setTimeout(connect,1800);
     };
     socket.onerror = () => { try{socket.close()}catch(e){} };
     socket.onopen = () => {
@@ -136,11 +150,15 @@
       item.append(status); $("players").append(item);
     });
     const started=state.status==="started";
+    const isOrganizer=!!(state.you && state.you.is_organizer);
+    session.isOrganizer=isOrganizer;
+    localStorage.setItem("mafiaNightSession",JSON.stringify(session));
     $("gameStatus").textContent=started?"IN PROGRESS":"LOBBY";
     show("lobbyView",!started); show("roleView",started);
+    show("hardResetBtn",isOrganizer);
     if(!started){
-      show("organizerActions",session.isOrganizer);
-      show("guestNotice",!session.isOrganizer);
+      show("organizerActions",isOrganizer);
+      show("guestNotice",!isOrganizer);
       $("lobbyNotice").textContent=players.length<4?`Need ${4-players.length} more player${4-players.length===1?"":"s"} to start.`:"Everyone is here. The organizer can start the game.";
       $("startBtn").disabled=players.length<4;
     } else {
@@ -148,7 +166,6 @@
       $("roleName").textContent=roleVisible?(role||"Role unavailable"):"••••••••";
       $("roleDesc").textContent=roleVisible?(roleDescriptions[role]||"You are a civilian. Stay alert."):"Tap reveal when you are ready.";
       show("revealBtn",!roleVisible); show("hideBtn",roleVisible);
-      show("resetActions",session.isOrganizer); show("waitReset",!session.isOrganizer);
     }
     clearErrors();
   }
@@ -167,11 +184,22 @@
     try{await api(`/api/rooms/${session.code}/start`,{player_id:session.playerId});}
     catch(e){errorAt("gameError",e.message);$("startBtn").disabled=false;}
   };
-  $("resetBtn").onclick=async()=>{
-    $("resetBtn").disabled=true;
-    try{roleVisible=false;await api(`/api/rooms/${session.code}/reset`,{player_id:session.playerId});}
-    catch(e){errorAt("gameError",e.message);}
-    finally{$("resetBtn").disabled=false;}
+  $("hardResetBtn").onclick=async()=>{
+    const confirmed=window.confirm("Hard Reset will permanently close this room and remove everyone. Continue?");
+    if(!confirmed) return;
+    $("hardResetBtn").disabled=true;
+    try{
+      await api(`/api/rooms/${session.code}/close`,{player_id:session.playerId});
+      returnHome("Room closed. Create a new game or join another room.");
+    }catch(e){errorAt("gameError",e.message);$("hardResetBtn").disabled=false;}
+  };
+  $("leaveBtn").onclick=async()=>{
+    if(!window.confirm("Leave this game?")) return;
+    $("leaveBtn").disabled=true;
+    try{
+      await api(`/api/rooms/${session.code}/leave`,{player_id:session.playerId});
+      returnHome("You left the game.");
+    }catch(e){errorAt("gameError",e.message);$("leaveBtn").disabled=false;}
   };
   $("revealBtn").onclick=()=>{roleVisible=true;if(latestState)render(latestState);};
   $("hideBtn").onclick=()=>{roleVisible=false;if(latestState)render(latestState);};

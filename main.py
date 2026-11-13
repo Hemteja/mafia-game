@@ -103,40 +103,6 @@ async def broadcast_state(room: Room):
     )
 
 
-def transfer_organizer(room: Room) -> Optional[Player]:
-    """Promote a remaining player when the current organizer leaves or disconnects."""
-    current = next((p for p in room.players.values() if p.is_organizer), None)
-    if current is None:
-        candidates = list(room.players.values())
-    else:
-        current.is_organizer = False
-        candidates = [p for p in room.players.values() if p.id != current.id]
-    if not candidates:
-        return None
-    # Prefer an online player; otherwise promote the first remaining player so the
-    # room still has an organizer who can act when they reconnect.
-    promoted = next((p for p in candidates if p.connected), candidates[0])
-    promoted.is_organizer = True
-    return promoted
-
-
-async def close_room(room: Room, reason: str = "The organizer closed this room."):
-    """Notify everyone and remove the room so its code can no longer be used."""
-    if rooms.get(room.code) is room:
-        rooms.pop(room.code, None)
-    sockets = [p.websocket for p in list(room.players.values()) if p.websocket]
-    async def notify_and_close(ws: WebSocket):
-        try:
-            await ws.send_json({"type": "room_closed", "message": reason})
-        except Exception:
-            pass
-        try:
-            await ws.close(code=4001, reason="Room closed")
-        except Exception:
-            pass
-    await asyncio.gather(*(notify_and_close(ws) for ws in sockets), return_exceptions=True)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
@@ -228,51 +194,22 @@ async def start_game(code: str, payload: dict):
     return {"ok": True}
 
 
-@app.post("/api/rooms/{code}/close")
-async def hard_reset_close_room(code: str, payload: dict):
+@app.post("/api/rooms/{code}/reset")
+async def reset_game(code: str, payload: dict):
     code = code.strip().upper()
     room = rooms.get(code)
     if not room:
-        raise HTTPException(status_code=404, detail="Room not found. It may already be closed.")
+        raise HTTPException(status_code=404, detail="Room not found.")
     player_id = str(payload.get("player_id", ""))
     async with room.lock:
         organizer = room.players.get(player_id)
         if not organizer or not organizer.is_organizer:
-            raise HTTPException(status_code=403, detail="Only the current organizer can close this room.")
-        await close_room(room, "The room was closed by the organizer. Please create or join another game.")
-    return {"ok": True, "closed": True}
-
-
-@app.post("/api/rooms/{code}/leave")
-async def leave_room(code: str, payload: dict):
-    code = code.strip().upper()
-    room = rooms.get(code)
-    if not room:
-        raise HTTPException(status_code=404, detail="Room not found. It may already be closed.")
-    player_id = str(payload.get("player_id", ""))
-    async with room.lock:
-        player = room.players.get(player_id)
-        if not player:
-            raise HTTPException(status_code=404, detail="You are no longer in this room.")
-        was_organizer = player.is_organizer
-        player.is_organizer = False
-        room.players.pop(player_id, None)
-        player_socket = player.websocket
-        player.websocket = None
-        if was_organizer and room.players:
-            transfer_organizer(room)
-        if not room.players:
-            rooms.pop(code, None)
-        elif was_organizer:
-            await broadcast_state(room)
-        else:
-            await broadcast_state(room)
-    if player_socket:
-        try:
-            await player_socket.close(code=1000, reason="You left the room")
-        except Exception:
-            pass
-    return {"ok": True, "left": True}
+            raise HTTPException(status_code=403, detail="Only the organizer can reset the game.")
+        room.status = "lobby"
+        for player in room.players.values():
+            player.role = None
+    await broadcast_state(room)
+    return {"ok": True}
 
 
 @app.websocket("/ws/{code}/{player_id}")
@@ -309,10 +246,5 @@ async def websocket_endpoint(websocket: WebSocket, code: str, player_id: str):
         if player.websocket is websocket:
             player.websocket = None
             player.connected = False
-            # A real disconnect immediately transfers organizer privileges. A
-            # refreshed/reconnected browser does not trigger this for its old socket.
-            if rooms.get(code) is room and player.is_organizer:
-                transfer_organizer(room)
-            if rooms.get(code) is room:
-                await broadcast_state(room)
-                
+            await broadcast_state(room)
+            

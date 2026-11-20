@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-MANDATORY_ROLES = ["Game Master", "Mafia", "Mafia2","Protector", "Detective"]
+MANDATORY_ROLES = ["Game Master", "Mafia", "Protector", "Detective"]
 ROOM_CODE_ALPHABET = string.ascii_uppercase + string.digits
 
 
